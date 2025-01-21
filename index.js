@@ -37,6 +37,7 @@ async function run() {
     const db = client.db("quickTasker");
     const userCollection = db.collection("users");
     const taskCollection = db.collection("tasks");
+    const submissionCollection = db.collection("submissions");
 
     // JWT------------------------------------
     app.post("/jwt", async (req, res) => {
@@ -89,6 +90,13 @@ async function run() {
 
     // users related APIs----------------------------------------------
 
+    app.get("/users/:email", verifyToken, async (req, res) => {
+      const adminEmail = req.params.email;
+      const filter = { email: { $ne: adminEmail } };
+      const result = await userCollection.find(filter).toArray();
+      res.send(result);
+    });
+
     app.get("/users/coins/:email", async (req, res) => {
       const email = req.params.email;
       const filter = { email };
@@ -139,6 +147,14 @@ async function run() {
       res.send(result);
     });
 
+    // for task details-----------------
+    app.get("/task-details/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await taskCollection.findOne(filter);
+      res.send(result);
+    });
+
     app.get("/task/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -185,6 +201,21 @@ async function run() {
       const result = await taskCollection.updateOne(filter, updateDoc);
       console.log("result", result);
 
+      res.send(result);
+    });
+
+    // Submissions related APIs---------------------------------------------------------
+
+    app.get("/submissions/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { worker_email: email };
+      const result = await submissionCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post("/submission", verifyToken, async (req, res) => {
+      const submissionData = req.body;
+      const result = await submissionCollection.insertOne(submissionData);
       res.send(result);
     });
 
