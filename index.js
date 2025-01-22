@@ -90,8 +90,23 @@ async function run() {
 
     // users related APIs----------------------------------------------
 
+    app.get("/users/best-workers", async (req, res) => {
+      const users = await userCollection.find().toArray();
+      const workerUsers = users
+        .filter((user) => user.role === "worker")
+        .sort((a, b) => b.availableCoins - a.availableCoins)
+        .slice(0, 6);
+
+      res.send(workerUsers);
+    });
+
     app.get("/users/:email", verifyToken, async (req, res) => {
       const adminEmail = req.params.email;
+
+      if (adminEmail !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+
       const filter = { email: { $ne: adminEmail } };
       const result = await userCollection.find(filter).toArray();
       res.send(result);
@@ -127,6 +142,13 @@ async function run() {
         },
       };
       const result = await userCollection.updateOne(query, updatedRole);
+      res.send(result);
+    });
+
+    app.delete("/user-delete/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(filter);
       res.send(result);
     });
 
@@ -215,6 +237,13 @@ async function run() {
       const result = await taskCollection.updateOne(filter, updateDoc);
       console.log("result", result);
 
+      res.send(result);
+    });
+
+    app.delete("/task-delete/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await taskCollection.deleteOne(filter);
       res.send(result);
     });
 
