@@ -166,7 +166,7 @@ async function run() {
       res.send({ role: user?.role });
     });
 
-    // Tasks related --------------------------------------------
+    // Tasks related ---------------------------------------------------------------------------------------
 
     app.get("/tasks", verifyToken, async (req, res) => {
       const result = await taskCollection.find().toArray();
@@ -191,7 +191,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/task/:id", verifyToken, async (req, res) => {
+    app.get("/task/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await taskCollection.findOne(filter);
@@ -224,7 +224,6 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const { title, detail, submission_info } = req.body;
-      console.log(id, title, detail, submission_info);
 
       const updateDoc = {
         $set: {
@@ -248,6 +247,88 @@ async function run() {
     });
 
     // Submissions related APIs---------------------------------------------------------
+
+    // Task to review
+    app.get("/review-task/:email", verifyToken, async (req, res) => {
+      const buyerEmail = req.params.email;
+
+      if (buyerEmail !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+
+      const query = { buyer_email: buyerEmail };
+      const pendingAllTasks = (
+        await submissionCollection.find(query).toArray()
+      ).filter((pendingSub) => pendingSub.status === "pending");
+
+      res.send(pendingAllTasks);
+    });
+
+    // after clicking approve button
+    app.patch("/approve-task", verifyToken, async (req, res) => {
+      const data = req.body;
+
+      // increase worker's coins
+      const workerEmail = data.worker_email;
+      const query = { email: workerEmail };
+      const updateDoc = {
+        $inc: {
+          availableCoins: data.payable_amount,
+        },
+      };
+
+      const result = await userCollection.updateOne(query, updateDoc);
+
+      // Change the status
+      const taskId = data.task_id;
+      const filter = { task_id: taskId };
+      const updateStatus = {
+        $set: {
+          status: "Approved",
+        },
+      };
+
+      const statusResult = await submissionCollection.findOneAndUpdate(
+        filter,
+        updateStatus,
+        { sort: { _id: -1 }, returnDocument: "after" }
+      );
+
+      res.send({ message: "success" });
+    });
+
+    // after clicking reject button
+    app.patch("/reject-task", verifyToken, async (req, res) => {
+      const data = req.body;
+
+      // increase required workers count
+      const id = data.task_id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $inc: {
+          required_workers: 1,
+        },
+      };
+
+      const result = await taskCollection.updateOne(query, updateDoc);
+
+      // Change the status
+      const taskId = data.task_id;
+      const filter = { task_id: taskId };
+      const updateStatus = {
+        $set: {
+          status: "Rejected",
+        },
+      };
+
+      const statusResult = await submissionCollection.findOneAndUpdate(
+        filter,
+        updateStatus,
+        { sort: { _id: -1 }, returnDocument: "after" }
+      );
+
+      res.send({ message: "success" });
+    });
 
     app.get("/submissions/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
