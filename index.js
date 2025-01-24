@@ -166,10 +166,12 @@ async function run() {
       res.send({ role: user?.role });
     });
 
-    // Tasks related ---------------------------------------------------------------------------------------
+    // Tasks related APIs---------------------------------------------------------------
 
     app.get("/tasks", verifyToken, async (req, res) => {
-      const result = await taskCollection.find().toArray();
+      const allTasks = await taskCollection.find().toArray();
+      const result = allTasks.filter((task) => task.required_workers > 0);
+
       res.send(result);
     });
 
@@ -239,11 +241,36 @@ async function run() {
       res.send(result);
     });
 
+    // this delete for Admin
     app.delete("/task-delete/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await taskCollection.deleteOne(filter);
       res.send(result);
+    });
+
+    // after clicking delete button in the buyer dashboard
+    app.patch("/delete-refill-task", verifyToken, async (req, res) => {
+      const id = req.body._id;
+
+      // delete task
+      const query = { _id: new ObjectId(id) };
+      const result = await taskCollection.deleteOne(query);
+
+      // refill coins for buyer
+      const buyerEmail = req.body.email;
+      const filter = { email: buyerEmail };
+      const updateDoc = {
+        $inc: {
+          availableCoins: req.body.required_workers * req.body.payable_amount,
+        },
+      };
+      const refillCoins = await userCollection.updateOne(filter, updateDoc);
+
+      res.send({
+        message:
+          "The task was successfully deleted, and coins were refilled for the buyer.",
+      });
     });
 
     // Submissions related APIs---------------------------------------------------------
@@ -292,6 +319,19 @@ async function run() {
         filter,
         updateStatus,
         { sort: { _id: -1 }, returnDocument: "after" }
+      );
+
+      // Decrease required workers count
+      const id = data.task_id;
+      const decrease_required_worker = {
+        $inc: {
+          required_workers: -1,
+        },
+      };
+
+      const decreaseResult = await taskCollection.updateOne(
+        { _id: new ObjectId(id) },
+        decrease_required_worker
       );
 
       res.send({ message: "success" });
