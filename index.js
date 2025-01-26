@@ -40,6 +40,7 @@ async function run() {
     const submissionCollection = db.collection("submissions");
     const orderCollection = db.collection("orders");
     const withdrawCollection = db.collection("withdraws");
+    const reviewCollection = db.collection("reviews");
 
     // JWT------------------------------------
     app.post("/jwt", async (req, res) => {
@@ -66,17 +67,6 @@ async function run() {
         next();
       });
     };
-
-    // const verifyRole = (requiredRole) => {
-    //   return async (req, res, next) => {
-    //     const email = req.decoded.email;
-    //     const user = await userCollection.findOne({ email });
-    //     if (user?.role !== requiredRole) {
-    //       return res.status(403).send({ message: "Forbidden access" });
-    //     }
-    //     next();
-    //   };
-    // };
 
     // const verifyAdmin = async (req, res, next) => {
     //   const email = req.decoded.email;
@@ -486,6 +476,12 @@ async function run() {
 
       const resultCoins = await userCollection.updateOne(query, decreaseCoins);
       res.send({ message: "success" });
+    });
+
+    // Reviews related APIs-----------------------------------------------------------
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
