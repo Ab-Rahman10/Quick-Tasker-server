@@ -39,6 +39,7 @@ async function run() {
     const taskCollection = db.collection("tasks");
     const submissionCollection = db.collection("submissions");
     const orderCollection = db.collection("orders");
+    const withdrawCollection = db.collection("withdraws");
 
     // JWT------------------------------------
     app.post("/jwt", async (req, res) => {
@@ -442,6 +443,49 @@ async function run() {
 
       const result = await userCollection.updateOne(filter, updateDoc);
       res.send(result);
+    });
+
+    // Withdraw related APIs-----------------------------------------------------------
+
+    app.get("/withdraws", verifyToken, async (req, res) => {
+      const result = await withdrawCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/withdraw", verifyToken, async (req, res) => {
+      const withdrawData = req.body;
+      const result = await withdrawCollection.insertOne(withdrawData);
+      res.send(result);
+    });
+
+    // after clicking payment success button
+    app.patch("/payment-success", verifyToken, async (req, res) => {
+      const { _id, coins, user } = req.body;
+
+      // Change the status
+      const filter = { _id: new ObjectId(_id) };
+      const updateStatus = {
+        $set: {
+          status: "Approved",
+        },
+      };
+      const withdrawData = await withdrawCollection.updateOne(
+        filter,
+        updateStatus
+      );
+
+      // Decrease the user coins
+      const email = user.email;
+      const query = { email: email };
+      const { availableCoins } = await userCollection.findOne(query);
+      const decreaseCoins = {
+        $set: {
+          availableCoins: availableCoins - coins,
+        },
+      };
+
+      const resultCoins = await userCollection.updateOne(query, decreaseCoins);
+      res.send({ message: "success" });
     });
 
     // Send a ping to confirm a successful connection
