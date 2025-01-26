@@ -68,18 +68,6 @@ async function run() {
       });
     };
 
-    // const verifyAdmin = async (req, res, next) => {
-    //   const email = req.decoded.email;
-    //   const filter = { email };
-    //   const user = await userCollection.findOne(filter);
-    //   const isAdmin = user?.role === "admin";
-
-    //   if (!isAdmin) {
-    //     return res.status(403).send({ message: "Forbidden access" });
-    //   }
-    //   next();
-    // };
-
     // users related APIs----------------------------------------------
 
     app.get("/users/best-workers", async (req, res) => {
