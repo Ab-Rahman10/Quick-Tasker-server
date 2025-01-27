@@ -444,30 +444,41 @@ async function run() {
     app.patch("/payment-success", verifyToken, async (req, res) => {
       const { _id, coins, user } = req.body;
 
-      // Change the status
-      const filter = { _id: new ObjectId(_id) };
-      const updateStatus = {
-        $set: {
-          status: "Approved",
-        },
-      };
-      const withdrawData = await withdrawCollection.updateOne(
-        filter,
-        updateStatus
-      );
-
-      // Decrease the user coins
+      // Decrease the user coins only if availableCoins is 200 or more
       const email = user.email;
       const query = { email: email };
-      const { availableCoins } = await userCollection.findOne(query);
-      const decreaseCoins = {
-        $set: {
-          availableCoins: availableCoins - coins,
-        },
-      };
+      const userData = await userCollection.findOne(query);
 
-      const resultCoins = await userCollection.updateOne(query, decreaseCoins);
-      res.send({ message: "success" });
+      if (userData && userData.availableCoins >= 200) {
+        // Change the status to Approved if coins are sufficient
+        const filter = { _id: new ObjectId(_id) };
+        const updateStatus = {
+          $set: {
+            status: "Approved",
+          },
+        };
+        const withdrawData = await withdrawCollection.updateOne(
+          filter,
+          updateStatus
+        );
+
+        const { availableCoins } = userData;
+        const decreaseCoins = {
+          $set: {
+            availableCoins: availableCoins - coins,
+          },
+        };
+
+        // Decrease the coins only if availableCoins is 200 or more
+        const resultCoins = await userCollection.updateOne(
+          query,
+          decreaseCoins
+        );
+        res.send({ message: "success" });
+      } else {
+        // If availableCoins is less than 200, return an error message
+        res.send({ message: "Insufficient coins" });
+      }
     });
 
     // Reviews related APIs-----------------------------------------------------------
