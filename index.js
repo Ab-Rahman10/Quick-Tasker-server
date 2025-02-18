@@ -159,6 +159,11 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/all-tasks", async (req, res) => {
+      const allTasks = await taskCollection.find().toArray();
+      res.send(allTasks);
+    });
+
     app.get("/tasks/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const filter = { email };
@@ -171,6 +176,13 @@ async function run() {
 
     // for task details-----------------
     app.get("/task-details/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await taskCollection.findOne(filter);
+      res.send(result);
+    });
+
+    app.get("/task-detail-page/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await taskCollection.findOne(filter);
